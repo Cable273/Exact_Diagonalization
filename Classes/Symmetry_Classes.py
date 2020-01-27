@@ -137,21 +137,43 @@ class PT:
             state = np.flip(state)
         return bin_to_int_base_m(state,self.system.base)
 
+# class inversion:
+    # def create_orbit(self,state):
+        # state_bin = self.system.basis[self.system.keys[state]]
+        # state_pair = np.ones(np.size(state_bin))-state_bin
+        # pair_ref = bin_to_int_base_m(state_pair,self.system.base)
+        # return pair_ref
+
+    # def sym_op(self,number,m):
+        # if m % 2 == 0:
+            # return int(number)
+        # else:
+            # state = self.system.basis[self.system.keys[number]]
+            # state_pair = np.ones(np.size(state))-state
+            # pair_ref = bin_to_int_base_m(state_pair,self.system.base)
+            # return pair_ref
+
 class inversion:
+    def __init__(self,system):
+        self.system = system
+        self.sym_order = 2
     def create_orbit(self,state):
         state_bin = self.system.basis[self.system.keys[state]]
-        state_pair = np.ones(np.size(state_bin))-state_bin
-        pair_ref = bin_to_int_base_m(state_pair,self.system.base)
-        return pair_ref
+        new_state = (-1)*(state_bin-1/2*np.ones(np.size(state_bin)))+1/2
+        new_ref = bin_to_int_base_m(new_state,self.system.base)
+        if new_ref == state:
+            return np.array((state))
+        else:
+            return np.array((state,new_ref))
 
     def sym_op(self,number,m):
         if m % 2 == 0:
             return int(number)
         else:
             state = self.system.basis[self.system.keys[number]]
-            state_pair = np.ones(np.size(state))-state
-            pair_ref = bin_to_int_base_m(state_pair,self.system.base)
-            return pair_ref
+            new_state = (-1)*(state-1/2*np.ones(np.size(state)))+1/2
+            new_ref = bin_to_int_base_m(new_state,self.system.base)
+            return new_ref
 
 class charge_conjugation:
     def create_orbit(self,state_ref):
