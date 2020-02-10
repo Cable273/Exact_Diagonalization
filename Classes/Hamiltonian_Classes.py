@@ -84,9 +84,6 @@ class Hamiltonian:
     def update_H_pos_sweep(self,state,i_index,block_references,block_keys,op_sizes,k_vec=None):
         new_refs_coef = dict() #for storing all refs and there coef from looping positions
         for position in range(0,self.system.N):
-            if self.system.bc == "open":
-                if position == self.system.N-1:
-                    break
             #indices operators act on (ie check pbc and loop around if at edge)
 
             #periodic site_indices (wrap around chain)
@@ -100,25 +97,37 @@ class Hamiltonian:
                             site_indices[op_index][n] = position+n
                         else:
                             site_indices[op_index][n] = position+n-self.system.N
+            #open (convention: Just throw away all terms that would wrap around chain)
+            #eg, nn int x_i x_{i+1}, run to x_{N-2} X_{N-1}
             elif self.system.bc == "open":
                 site_indices = dict()
                 for op_index in range(0,np.size(self.model,axis=0)):
                     d=np.size(self.model[op_index])
-                    if position + d < self.system.N:
+                    if position + d -1 < self.system.N:
                         site_indices[op_index] = np.zeros(d)
                         for n in range(0,d):
-                            if position+n < self.system.N:
-                                site_indices[op_index][n] = position+n
-                            else:
-                                site_indices[op_index][n] = position+n-self.system.N
+                            site_indices[op_index][n] = position+n
+                    else:
+                        site_indices[op_index] = None
+
 
             #filter these sites for identitys, projectors and operators to act with
             #0 is projector, -1 is identity
             P_indices = dict()
             non_projector_site_indices=dict()
             non_projector_op_indices=dict()
-            # for op_index in range(0,np.size(self.model,axis=0)):
-            for op_index in list(site_indices.keys()):
+
+            #throw away keys where site_indices[op_index] = None (OBC)
+            op_index_keys = list(site_indices.keys())
+            to_del=[]
+            for n in range(0,np.size(op_index_keys,axis=0)):
+                if site_indices[op_index_keys[n]] is None:
+                    to_del = np.append(to_del,n)
+            for n in range(np.size(to_del,axis=0)-1,-1,-1):
+                op_index_keys = np.delete(op_index_keys,to_del[n],axis=0)
+                
+
+            for op_index in op_index_keys:
                 for n in range(0,np.size(self.model[op_index],axis=0)):
                     if self.model[op_index][n] != 0 and self.model[op_index][n] != -1: 
                         #init dictionary if empty
@@ -135,8 +144,7 @@ class Hamiltonian:
                             P_indices[op_index] = np.append(P_indices[op_index],site_indices[op_index][n])
 
             #loop through all ops in sum to get all the product states mapped to + coef (full H space, sym eq state used later)
-            # for op_index in range(0,np.size(self.model,axis=0)):
-            for op_index in list(site_indices.keys()):
+            for op_index in op_index_keys:
                 #check state survives projectors first:
                 survives_projectors = 1
                 if op_index in list(P_indices.keys()):
@@ -463,9 +471,9 @@ class H_table:
 
     def find_eig(self,index=None,k0=None,verbose=False):
         if index is None:
-            self.table["no_sym"].e, self.table["no_sym"].u = sp.linalg.eigh(self.table["no_sym"].H)
+            self.table["no_sym"].e, self.table["no_sym"].u = np.linalg.eigh(self.table["no_sym"].H)
         else:
             key = bin_to_int_base_m(index,self.system.N)
-            self.table[key].e, self.table[key].u = sp.linalg.eigh(self.table[key].H)
+            self.table[key].e, self.table[key].u = np.linalg.eigh(self.table[key].H)
         if verbose is True:
             print("Found Eigenvalues")
