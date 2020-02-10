@@ -37,14 +37,15 @@ class level_stats:
             self.e=np.delete(self.e,degen_indices[n])
         dim = np.size(self.e)
         # self.e = self.e[int(dim/3):int(2*dim/3)]
+        # self.e = self.e[int(5*dim/12):int(7*dim/12)]
 
-        #remove zero modes
-        # to_del = []
-        # for n in range(0,np.size(self.e,axis=0)):
-            # if np.abs(self.e[n])<1e-10:
-                # to_del = np.append(to_del,n)
-        # for n in range(np.size(to_del,axis=0)-1,-1,-1):
-            # self.e = np.delete(self.e,to_del[n])
+        # remove zero modes
+        to_del = []
+        for n in range(0,np.size(self.e,axis=0)):
+            if np.abs(self.e[n])<1e-5:
+                to_del = np.append(to_del,n)
+        for n in range(np.size(to_del,axis=0)-1,-1,-1):
+            self.e = np.delete(self.e,to_del[n])
 
         self.get_level_ratios()
 
@@ -68,8 +69,7 @@ class level_stats:
         # density = stats.kde.gaussian_kde(self.level_ratios)
         # x=np.arange(0,5.01,0.01)
         # plt.plot(x,density(x))
-
-        plt.hist(self.level_ratios)
+        plt.hist(self.level_ratios,normed=True)
 
 
 #fastest to get init states in energy rep and evolve. Saves exponentiating H more than neccessary
@@ -210,11 +210,17 @@ class entropy:
             # r2=np.random.uniform(0,1)
             M[i_index,j_index] = M[i_index,j_index]+state[n]#+1e-14*r1*np.exp(1j*r2)
         return M
+
+    def eSpectrum(self,state):
+        M = self.coef_matrix(state)
+        #schmidt decomposition
+        U,S,V = sp.linalg.svd(M)
+        return np.abs(S)**2
             
     def eval(self,state):
         M = self.coef_matrix(state)
         #schmidt decomposition
-        U,S,V = np.linalg.svd(M)
+        U,S,V = sp.linalg.svd(M)
         #remove zeros (stop error in entropy, log)
         to_del=[]
         for n in range(0,np.size(S,axis=0)):
@@ -335,7 +341,7 @@ def plot_adjacency_graph(adjacency_matrix,labels=None,largest_comp=False):
     y_off = 0
     for k, v in pos.items():
         pos_higher[k] = (v[0],v[1]+y_off)
-    nx.draw_networkx_labels(gr,pos_higher,labels,font_size = 10,font_color="b")
+    nx.draw_networkx_labels(gr,pos_higher,labels,font_size = 14,font_color="b")
 
     # sm = plt.cm.ScalarMappable(cmap=cmap, norm=plt.Normalize(vmin = vmin, vmax=vmax))
     # sm._A = []
@@ -467,7 +473,7 @@ def get_top_band_indices(e,overlap,N,x0,y0,e_diff=None):
     #points closest to (200,200)
     d = np.zeros((np.size(overlap)))
     for n in range(0,np.size(overlap,axis=0)):
-        if overlap[n] > -5:
+        if overlap[n] > -15:
             d[n] = np.power((e[n]-x0)**2+(overlap[n]-y0)**2,0.5)
         else:
             d[n] = 10000
@@ -489,7 +495,7 @@ def get_top_band_indices(e,overlap,N,x0,y0,e_diff=None):
     #points closest to (-200,200)
     d = np.zeros((np.size(overlap)))
     for n in range(0,np.size(overlap,axis=0)):
-        if overlap[n] > -5:
+        if overlap[n] > -15:
             d[n] = np.power((e[n]+x0)**2+(overlap[n]-y0)**2,0.5)
         else:
             d[n] = 10000
@@ -522,8 +528,8 @@ def get_top_band_indices(e,overlap,N,x0,y0,e_diff=None):
     scar_indices = np.append(scar_indices,max_loc)
     min_index = np.argmin(e)
     max_index = np.argmax(e)
-    scar_indices = np.append(scar_indices,min_index)
-    scar_indices = np.append(scar_indices,max_index)
+    # scar_indices = np.append(scar_indices,min_index)
+    # scar_indices = np.append(scar_indices,max_index)
     to_del = []
     for n in range(0,np.size(scar_indices,axis=0)):
         if scar_indices[n] is None:
