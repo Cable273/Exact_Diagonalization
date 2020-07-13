@@ -77,61 +77,12 @@ class unlocking_System:
 
     def gen_basis(self):
         self.basis = self.gen_P0K_basis()
-        # self.basis = self.gen_unlocking_basis()
         self.basis_refs = np.zeros(np.size(self.basis,axis=0))
         self.keys = dict()
         for n in range(0,np.size(self.basis,axis=0)):
             self.basis_refs[n] = bin_to_int_base_m(self.basis[n],self.base)
             self.keys[self.basis_refs[n]] = n
         self.dim = np.size(self.basis_refs)
-
-    def gen_unlocking_basis(self):
-        #to append 0,...,K-1 to current basis and grow it recursively
-        basis = np.arange(0,self.base).reshape(self.base,1)
-
-        #initial growth:
-        grown_basis = np.zeros(2)
-        for n in range(0,np.size(basis,axis=0)):
-            if basis[n] in self.unlockers: #unblocking state, next site can be anything
-                for m in range(0,self.base):
-                    grown_basis = np.vstack((grown_basis,np.array((m,basis[n]))))
-            else: #not an unlocking state, next site only an unlocker
-                for m in range(0,np.size(self.unlockers,axis=0)):
-                    grown_basis = np.vstack((grown_basis,np.array((self.unlockers[m],basis[n]))))
-        basis = np.delete(grown_basis,0,axis=0)
-
-        if self.N == 2:
-            return basis
-        else:
-            if self.bc == "open":
-                N_max = self.N+1
-            else:
-                N_max = self.N
-
-            for n in range(3,N_max):
-                grown_basis = np.zeros(n)
-                for m in range(0,np.size(basis,axis=0)):
-                    if basis[m,0] in self.unlockers: #unblocking state, next site can be anything
-                        for i in range(0,self.base):
-                            grown_basis = np.vstack((grown_basis,np.append(np.array((i)),basis[m])))
-                    else: #not an unlocking state, next site only an unlocker
-                        for i in range(0,np.size(self.unlockers,axis=0)):
-                            grown_basis = np.vstack((grown_basis,np.append(np.array((self.unlockers[i])),basis[m])))
-                basis = np.delete(grown_basis,0,axis=0)
-
-            if self.bc == "open":
-                return basis
-            else: #do last site checking pbc
-                grown_basis = np.zeros(self.N)
-                for n in range(0,np.size(basis,axis=0)):
-                    if basis[n,0] in self.unlockers and basis[n,np.size(basis,axis=1)-1] in self.unlockers: #last site anything
-                        for m in range(0,self.base):
-                            grown_basis = np.vstack((grown_basis,np.append(np.array((m)),basis[n])))
-                    else: #only an unlocker
-                        for m in range(0,np.size(self.unlockers,axis=0)):
-                            grown_basis = np.vstack((grown_basis,np.append(np.array((self.unlockers[m])),basis[n])))
-                basis = np.delete(grown_basis,0,axis=0)
-            return basis
 
     def gen_P0K_basis(self):
         #to append 0,...,K-1 to current basis and grow it recursively
@@ -177,17 +128,16 @@ class unlocking_System:
         return v
 
     def U1_sector(self,n_up):
-        new_basis_refs = []
-        for n in range(0,np.size(self.basis,axis=0)):
-            if np.sum(self.basis[n]) == n_up:
-                new_basis_refs = np.append(new_basis_refs,self.basis_refs[n])
+        from sympy.utilities.iterables import multiset_permutations
+        root = np.append(np.ones(n_up),np.zeros(self.N-n_up)).astype(int)
+        basis = np.array(list(multiset_permutations(root)))
 
         new_basis = deepcopy(self)
-        new_basis.basis_refs = new_basis_refs
-        new_basis.basis = np.zeros((np.size(new_basis.basis_refs),new_basis.N))
+        new_basis.basis = basis
+        new_basis.basis_refs = np.zeros(np.size(new_basis.basis,axis=0))
         new_basis.keys = dict()
-        for n in range(0,np.size(new_basis.basis_refs,axis=0)):
-            new_basis.basis[n] = int_to_bin_base_m(new_basis.basis_refs[n],new_basis.base,new_basis.N)
+        for n in range(0,np.size(new_basis.basis_refs)):
+            new_basis.basis_refs[n] = bin_to_int_base_m(new_basis.basis[n],new_basis.base)
             new_basis.keys[new_basis.basis_refs[n]] = n
         new_basis.dim = np.size(new_basis.basis_refs)
         return new_basis
@@ -249,4 +199,92 @@ class f1_System:
 		                grown_basis = np.vstack((grown_basis,np.append(np.array((m)),basis[n])))
             basis = np.delete(grown_basis,0,axis=0)
 
+        return basis
+
+class unlocking_System_DoubleBlock:
+    def __init__(self,unlocker,bc,base,N):
+        self.bc = bc
+        self.base = base
+        self.N = N
+        self.unlocker = unlocker
+
+    def gen_basis(self):
+        self.basis = self.gen_doubeRydbergBasis()
+        self.basis_refs = np.zeros(np.size(self.basis,axis=0))
+        self.keys = dict()
+        for n in range(0,np.size(self.basis,axis=0)):
+            self.basis_refs[n] = bin_to_int_base_m(self.basis[n],self.base)
+            self.keys[self.basis_refs[n]] = n
+        self.dim = np.size(self.basis_refs)
+
+    def gen_doubeRydbergBasis(self):
+        #keep appending to dictionary, growing recursively until chain size reached
+        #length 1+2
+        states_length_n = dict()
+        states_length_n[1] = dict()
+        for n in range(0,self.base):
+            states_length_n[1][n] = np.array([n])
+
+        states_length_n[2] = dict()
+        c=0
+        for n in range(0,len(states_length_n[1])):
+            if states_length_n[1][n][0] == self.unlocker:
+                for m in range(0,self.base):
+                    new_state = np.append([m],states_length_n[1][n])
+                    if np.size(new_state)<=self.N:
+                        states_length_n[2][c] = new_state
+                        c+=1
+            else:
+                new_state = np.append([self.unlocker,self.unlocker],states_length_n[1][n])
+                if np.size(new_state)<=self.N:
+                    states_length_n[2][c] = new_state
+                    c+=1
+
+        for length in range(3,self.N+1):
+            states_length_n[length] = dict()
+            c=0
+            for n in range(0,len(states_length_n[length-1])):
+                if np.size(states_length_n[length-1][n]) < self.N:
+                    #append any state
+                    if states_length_n[length-1][n][0] == self.unlocker and states_length_n[length-1][n][1] == self.unlocker:
+                        for m in range(0,self.base):
+                            new_state = np.append([m],states_length_n[length-1][n])
+                            if np.size(new_state)<=self.N:
+                                states_length_n[length][c] = new_state
+                                c+=1
+                    #append only double + sing unlocker
+                    else:
+                        new_state = np.append([self.unlocker,self.unlocker],states_length_n[length-1][n])
+                        if np.size(new_state)<=self.N:
+                            states_length_n[length][c] = new_state
+                            c+=1
+                        new_state = np.append([self.unlocker],states_length_n[length-1][n])
+                        if np.size(new_state)<=self.N:
+                            states_length_n[length][c] = new_state
+                            c+=1
+                else:
+                    states_length_n[length][c] = states_length_n[length-1][n]
+                    c+=1
+            del states_length_n[length-2]
+
+
+        print("basis grown, trimming")
+        basis = np.zeros((len(states_length_n[self.N]),self.N))
+        c=0
+        pbar=ProgressBar()
+        for n in pbar(range(0,len(states_length_n[self.N]))):
+            if self.bc == "periodic":
+                if states_length_n[self.N][n][0] == self.unlocker and states_length_n[self.N][n][1] == self.unlocker:
+                    basis[c] = states_length_n[self.N][n]
+                    c+=1
+                elif states_length_n[self.N][n][np.size(states_length_n[self.N][n])-1] == self.unlocker and states_length_n[self.N][n][np.size(states_length_n[self.N][n])-2] == self.unlocker:
+                    basis[c] = states_length_n[self.N][n]
+                    c+=1
+                elif states_length_n[self.N][n][0] == self.unlocker and states_length_n[self.N][n][np.size(states_length_n[self.N][n])-1] == self.unlocker:
+                    basis[c] = states_length_n[self.N][n]
+                    c+=1
+            else:
+                basis[c] = states_length_n[self.N][n]
+                c+=1
+        basis = np.unique(basis,axis=0)
         return basis
