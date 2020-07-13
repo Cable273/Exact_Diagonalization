@@ -63,6 +63,72 @@ class translational:
             state = trans_state
         return bin_to_int_base_m(state,self.system.base)
 
+class increment_trans:
+    def __init__(self,system):
+        self.system = system
+        self.sym_order = self.system.N
+    def create_orbit(self,number):
+        "generates all other states connected by translation"
+        seq=[number]
+        cycled_state = self.sym_op(number,1)
+        while cycled_state != number:
+            seq = np.append(seq,cycled_state)
+            cycled_state=self.sym_op(cycled_state,1)
+        return seq
+
+    def sym_op(self,number,m):
+        state = self.system.basis[self.system.keys[number]]
+        new_state = np.copy(state)
+        for m in range(0,np.size(state,axis=0)):
+            new_state[m] = (state[m] + 1) % (self.system.base)
+        return bin_to_int_base_m(new_state,self.system.base)
+
+class flip_half_left:
+    def __init__(self,system):
+        self.system = system
+        self.sym_order = 2
+    def create_orbit(self,number):
+        "generates all other states connected by translation"
+        seq=[number]
+        cycled_state = self.sym_op(number,1)
+        while cycled_state != number:
+            seq = np.append(seq,cycled_state)
+            cycled_state=self.sym_op(cycled_state,1)
+        return seq
+
+    def sym_op(self,number,m):
+        state = self.system.basis[self.system.keys[number]]
+        d = np.size(state)
+        state1 = state[:int(d/2)]
+        state2 = state[int(d/2):]
+        state1_new = np.flip(state1)
+        state2_new = state2
+        state = np.append(state1_new,state2_new)
+        return bin_to_int_base_m(state,self.system.base)
+
+class flip_half_right:
+    def __init__(self,system):
+        self.system = system
+        self.sym_order = 2
+    def create_orbit(self,number):
+        "generates all other states connected by translation"
+        seq=[number]
+        cycled_state = self.sym_op(number,1)
+        while cycled_state != number:
+            seq = np.append(seq,cycled_state)
+            cycled_state=self.sym_op(cycled_state,1)
+        return seq
+
+    def sym_op(self,number,m):
+        state = self.system.basis[self.system.keys[number]]
+        d = np.size(state)
+        state1 = state[:int(d/2)]
+        state2 = state[int(d/2):]
+        state1_new = state1
+        state2_new = np.flip(state2)
+        state = np.append(state1_new,state2_new)
+        return bin_to_int_base_m(state,self.system.base)
+
 class translational_general:
     def __init__(self,system,order):
         self.system = system
@@ -108,6 +174,41 @@ class parity:
             state = self.system.basis[self.system.keys[number]]
             parity_state = np.flip(state,0)
             parity_ref = bin_to_int_base_m(parity_state,self.system.base)
+            return parity_ref
+
+class PX_spin1:
+    def __init__(self,system):
+        self.system = system
+        self.sym_order = 2
+    def create_orbit(self,state):
+        state_bin = self.system.basis[self.system.keys[state]]
+        state_pair = np.flip(state_bin,0)
+        new_state = np.copy(state_pair)
+        for m in range(0,np.size(state_pair,axis=0)):
+            if state_pair[m] == 0:
+                new_state[m] = 2
+            elif state_pair[m] == 2:
+                new_state[m] = 0
+        pair_ref = bin_to_int_base_m(new_state,self.system.base)
+        if pair_ref == state:
+            return np.array((state))
+        else:
+            return np.array((state,pair_ref))
+
+    def sym_op(self,number,m):
+        if m % 2 == 0:
+            return int(number)
+        else:
+            state = self.system.basis[self.system.keys[number]]
+            parity_state = np.flip(state,0)
+            new_state = np.copy(parity_state)
+            #now invert
+            for m in range(0,np.size(parity_state,axis=0)):
+                if parity_state[m] == 0:
+                    new_state[m] = 2
+                elif parity_state[m] == 2:
+                    new_state[m] = 0
+            parity_ref = bin_to_int_base_m(new_state,self.system.base)
             return parity_ref
 
 class PT:
