@@ -32,20 +32,21 @@ class level_stats:
         degen_indices = []
         for n in range(0,np.size(self.e,axis=0)-1):
             if np.abs(self.e[n+1] - self.e[n])<1e-10:
-                degen_indices = np.append(degen_indices,n)
+                degen_indices = np.append(degen_indices,n+1)
         for n in range(np.size(degen_indices,axis=0)-1,-1,-1):
             self.e=np.delete(self.e,degen_indices[n])
         dim = np.size(self.e)
-        # self.e = self.e[int(dim/3):int(2*dim/3)]
+        self.e = self.e[int(dim/3):int(2*dim/3)]
+        # self.e = self.e[:int(dim/2)]
         # self.e = self.e[int(5*dim/12):int(7*dim/12)]
 
         # remove zero modes
-        to_del = []
-        for n in range(0,np.size(self.e,axis=0)):
-            if np.abs(self.e[n])<1e-5:
-                to_del = np.append(to_del,n)
-        for n in range(np.size(to_del,axis=0)-1,-1,-1):
-            self.e = np.delete(self.e,to_del[n])
+        # to_del = []
+        # for n in range(0,np.size(self.e,axis=0)):
+            # if np.abs(self.e[n])<1e-5:
+                # to_del = np.append(to_del,n)
+        # for n in range(np.size(to_del,axis=0)-1,-1,-1):
+            # self.e = np.delete(self.e,to_del[n])
 
         self.get_level_ratios()
 
@@ -541,7 +542,7 @@ def get_top_band_indices(e,overlap,N,x0,y0,e_diff=None):
 def orth(v,orthonormalBasis):
     newV = np.copy(v)
     if np.size(np.shape(orthonormalBasis))>1:
-        for n in range(0,np.size(orthonormalBasis,axis=0)):
+        for n in range(np.size(orthonormalBasis,axis=0)-1,-1,-1):
             newV = newV - np.vdot(newV,orthonormalBasis[n,:])*orthonormalBasis[n,:]
     else:
         newV = newV - np.vdot(newV,orthonormalBasis)*orthonormalBasis
@@ -551,30 +552,7 @@ def orth(v,orthonormalBasis):
         return newV / np.power(np.vdot(newV,newV),0.5)
 
 # def gen_krylov_basis(H,dim,init_state_prod_basis,orth=False):
-def gen_krylov_basis(H,dim,init_state_prod_basis):
-    # krylov_basis = init_state_prod_basis
-    # current_state = krylov_basis
-    # for n in range(0,dim):
-        # print(n)
-        # next_state = np.dot(H,current_state)
-        # if np.abs(np.vdot(next_state,next_state))>1e-5:
-            # next_state = next_state / np.power(np.vdot(next_state,next_state),0.5)
-            # krylov_basis = np.vstack((krylov_basis,next_state))
-            # current_state = next_state
-        # else:
-            # break
-    # krylov_basis = np.transpose(krylov_basis)
-    # if orth is False:
-        # return krylov_basis
-    # else:
-        # if orth == "qr":
-            # krylov_basis,temp = np.linalg.qr(krylov_basis)
-        # else:
-            # gs = gram_schmidt(krylov_basis)
-            # gs.ortho()
-            # krylov_basis = gs.ortho_basis
-    # return krylov_basis
-
+def gen_krylov_basis(H,init_state_prod_basis,dim):
     psi0 = init_state_prod_basis / np.power(np.vdot(init_state_prod_basis,init_state_prod_basis),0.5)
     kBasis = psi0
     currentState = psi0
