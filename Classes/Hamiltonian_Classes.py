@@ -77,6 +77,7 @@ class Hamiltonian:
         pbar = ProgressBar()
         #loop through basis states
         for i in pbar(range(0,dim)):
+        # for i in range(0,dim):
             #state = bit representation of product state
             state = self.system.basis[self.system.keys[block_references[i]]]
             self.update_H_pos_sweep(state,i,block_references,block_keys,op_sizes,k_vec=k_vec)
